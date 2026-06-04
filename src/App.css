@@ -1,0 +1,473 @@
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+  transition: 0.3s ease;
+}
+
+/* ================================================= */
+/* DARK THEME */
+/* ================================================= */
+
+.dark {
+  background-color: #0f0f0f;
+  color: white;
+}
+
+/* ================================================= */
+/* LIGHT THEME */
+/* ================================================= */
+
+.light {
+  background-color: #f4f4f4;
+  color: black;
+}
+
+/* ================================================= */
+/* HEADER */
+/* ================================================= */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 20px 40px;
+
+  background: linear-gradient(
+    90deg,
+    #4b0000,
+    #8b0000
+  );
+
+  color: white;
+
+  box-shadow: 0px 4px 10px rgba(0,0,0,0.4);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 1px;
+}
+
+/* ================================================= */
+/* THEME BUTTON */
+/* ================================================= */
+
+.theme-btn {
+
+  border: none;
+
+  padding: 10px 16px;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+
+  font-weight: bold;
+
+  background-color: white;
+
+  color: #8b0000;
+
+  transition: 0.2s ease;
+}
+
+.theme-btn:hover {
+  transform: scale(1.05);
+}
+
+/* ================================================= */
+/* MAIN CONTAINER */
+/* ================================================= */
+
+.chat-container {
+
+  max-width: 1000px;
+
+  margin: auto;
+
+  padding: 40px 20px;
+}
+
+/* ================================================= */
+/* INPUT SECTION */
+/* ================================================= */
+
+.input-section {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 15px;
+
+  margin-bottom: 30px;
+}
+
+.input-section textarea {
+
+  min-height: 120px;
+
+  border-radius: 16px;
+
+  border: none;
+
+  padding: 20px;
+
+  font-size: 16px;
+
+  resize: none;
+
+  outline: none;
+
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
+}
+
+.dark .input-section textarea {
+
+  background-color: #1f1f1f;
+
+  color: white;
+}
+
+.light .input-section textarea {
+
+  background-color: white;
+
+  color: black;
+}
+
+/* ================================================= */
+/* ASK BUTTON */
+/* ================================================= */
+
+.input-section button {
+
+  width: 180px;
+
+  padding: 14px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+
+  font-size: 16px;
+
+  font-weight: bold;
+
+  background: linear-gradient(
+    90deg,
+    #8b0000,
+    #b22222
+  );
+
+  color: white;
+
+  transition: 0.2s ease;
+}
+
+.input-section button:hover {
+
+  transform: translateY(-2px);
+
+  box-shadow: 0px 6px 16px rgba(139,0,0,0.5);
+}
+
+/* ================================================= */
+/* RESPONSE SECTION */
+/* ================================================= */
+
+.response-section {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 25px;
+}
+
+/* ================================================= */
+/* CARDS */
+/* ================================================= */
+
+.card {
+
+  padding: 24px;
+
+  border-radius: 18px;
+
+  box-shadow: 0px 6px 18px rgba(0,0,0,0.25);
+
+  transition: 0.2s ease;
+}
+
+.card:hover {
+
+  transform: translateY(-3px);
+}
+
+.dark .card {
+
+  background-color: #1a1a1a;
+}
+
+.light .card {
+
+  background-color: white;
+}
+
+/* ================================================= */
+/* CARD HEADINGS */
+/* ================================================= */
+
+.card h3 {
+
+  margin-top: 0;
+
+  color: #ff4d4d;
+
+  margin-bottom: 15px;
+}
+
+/* ================================================= */
+/* PRE */
+/* ================================================= */
+
+pre {
+
+  white-space: pre-wrap;
+
+  word-wrap: break-word;
+
+  overflow-x: auto;
+
+  font-size: 14px;
+}
+
+/* ================================================= */
+/* SPECIAL CARDS */
+/* ================================================= */
+
+.question-card {
+
+  border-left: 6px solid #8b0000;
+}
+
+.sql-card {
+
+  border-left: 6px solid #ff4d4d;
+}
+
+.result-card {
+
+  border-left: 6px solid #ffffff;
+}
+
+.insight-card {
+
+  border-left: 6px solid #b22222;
+}
+
+/* ================================================= */
+/* MOBILE */
+/* ================================================= */
+
+@media (max-width: 768px) {
+
+  .header {
+
+    flex-direction: column;
+
+    gap: 15px;
+
+    text-align: center;
+  }
+
+  .header h1 {
+
+    font-size: 26px;
+  }
+
+  .input-section button {
+
+    width: 100%;
+  }
+}
+/* ================================================= */
+/* MARKDOWN BODY */
+/* ================================================= */
+
+.markdown-body {
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.markdown-body h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ff4d4d;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(139,0,0,0.3);
+}
+
+.markdown-body h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ff6b6b;
+  margin: 20px 0 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.markdown-body strong {
+  color: #ff4d4d;
+  font-weight: 700;
+}
+
+.light .markdown-body strong {
+  color: #8b0000;
+}
+
+.markdown-body p {
+  margin: 0 0 12px 0;
+}
+
+.markdown-body ul {
+  padding-left: 20px;
+  margin: 8px 0 14px 0;
+}
+
+.markdown-body ul li {
+  margin-bottom: 6px;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.markdown-body thead tr {
+  background: linear-gradient(90deg, #8b0000, #b22222);
+  color: white;
+}
+
+.markdown-body thead th {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dark .markdown-body tbody tr {
+  background-color: #242424;
+}
+
+.light .markdown-body tbody tr {
+  background-color: #fafafa;
+}
+
+.dark .markdown-body tbody tr:nth-child(even) {
+  background-color: #2c2c2c;
+}
+
+.light .markdown-body tbody tr:nth-child(even) {
+  background-color: #f0f0f0;
+}
+
+.markdown-body tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(139,0,0,0.15);
+}
+
+.dark .markdown-body tbody td {
+  border-bottom-color: rgba(255,255,255,0.07);
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid rgba(139,0,0,0.25);
+  margin: 20px 0;
+}
+
+/* ================================================= */
+/* CHART CARD */
+/* ================================================= */
+
+.chart-card {
+  border-left: 6px solid #ff8c00;
+}
+
+.chart-card h3 {
+  color: #ff8c00;
+}
+
+.chart-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ================================================= */
+/* MOBILE */
+/* ================================================= */
+
+@media (max-width: 768px) {
+
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .header h1 {
+    font-size: 26px;
+  }
+
+  .input-section button {
+    width: 100%;
+  }
+}
+
+/* ================================================= */
+/* CHART SUBTITLE */
+/* ================================================= */
+
+.chart-subtitle {
+  margin: -8px 0 14px 0;
+  font-size: 13px;
+  opacity: 0.6;
+  font-style: italic;
+}
