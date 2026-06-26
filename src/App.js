@@ -49,12 +49,25 @@ const EXCEL_LOADING_MESSAGES = [
   "📈 Preparing your analysis...",
 ];
 
+const GENERIC_LOADING_MESSAGES = [
+  "📂 Reading your spreadsheet...",
+  "🧠 Understanding your columns...",
+  "🔍 Profiling the data...",
+  "⚡ Running SQL on your file...",
+  "📊 Building the analysis...",
+  "🎯 Extracting key insights...",
+  "📈 Preparing your answer...",
+];
+
 // =====================================================
 // LOADING OVERLAY
 // =====================================================
 
-function LoadingOverlay({ darkMode, isExcel }) {
-  const messages = isExcel ? EXCEL_LOADING_MESSAGES : LOADING_MESSAGES;
+function LoadingOverlay({ darkMode, mode }) {
+  let messages = LOADING_MESSAGES;
+  if (mode === "nvplay") messages = EXCEL_LOADING_MESSAGES;
+  if (mode === "generic") messages = GENERIC_LOADING_MESSAGES;
+
   const [msgIndex, setMsgIndex] = useState(0);
   const [fade, setFade] = useState(true);
 
@@ -69,10 +82,13 @@ function LoadingOverlay({ darkMode, isExcel }) {
     return () => clearInterval(interval);
   }, [messages]);
 
+  const ballClass = mode === "nvplay" ? " excel-ball"
+                   : mode === "generic" ? " generic-ball" : "";
+
   return (
     <div className="loading-overlay">
       <div className="cricket-ball-wrapper">
-        <div className={`cricket-ball${isExcel ? " excel-ball" : ""}`}>
+        <div className={`cricket-ball${ballClass}`}>
           <div className="seam seam-h" />
           <div className="seam seam-v" />
         </div>
@@ -83,6 +99,51 @@ function LoadingOverlay({ darkMode, isExcel }) {
       </p>
       <div className="loading-dots">
         <span /><span /><span /><span /><span />
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// QUICK ANSWER CARD (TL;DR)
+// =====================================================
+
+function QuickAnswerCard({ quickAnswer }) {
+  if (!quickAnswer) return null;
+  return (
+    <div className="card quick-answer-card">
+      <h3>⚡ Quick Answer</h3>
+      <div className="quick-answer-body">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {quickAnswer}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// RELATED QUESTIONS (clickable chips)
+// =====================================================
+
+function RelatedQuestions({ questions, onAsk }) {
+  if (!questions || questions.length === 0) return null;
+  return (
+    <div className="card related-card">
+      <h3>🔗 Related Analyses</h3>
+      <p className="related-hint">Click any question to run that analysis</p>
+      <div className="related-chips">
+        {questions.map((q, i) => (
+          <button
+            key={i}
+            className="related-chip"
+            onClick={() => onAsk(q)}
+            title="Click to run this analysis"
+          >
+            <span className="related-chip-icon">▶</span>
+            <span className="related-chip-text">{q}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -129,15 +190,18 @@ function CollapsibleResults({ results, darkMode, label }) {
 }
 
 // =====================================================
-// EXCEL SOURCE BADGE
+// SOURCE BADGE
 // =====================================================
 
-function SourceBadge({ isExcel, fileName }) {
-  if (!isExcel) return null;
+function SourceBadge({ source, fileName }) {
+  if (source === "db") return null;
+  const isGeneric = source === "generic";
   return (
-    <div className="source-badge excel-source">
+    <div className={`source-badge ${isGeneric ? "generic-source" : "excel-source"}`}>
       <span className="source-icon">📂</span>
-      <span>From file: <strong>{fileName}</strong></span>
+      <span>
+        {isGeneric ? "Generic file" : "NV-Play file"}: <strong>{fileName}</strong>
+      </span>
     </div>
   );
 }
@@ -321,6 +385,21 @@ function CricketChart({ chartConfig, darkMode }) {
 }
 
 // =====================================================
+// STRIP "RELATED ANALYSES" FROM INSIGHT
+// =====================================================
+// Backend now returns related_questions as a separate field, so remove
+// the duplicated section from the markdown insight before rendering.
+function stripRelatedSection(insight) {
+  if (!insight) return insight;
+  // Remove any "Related Analyses" section header + the lines that follow it,
+  // until the next "###" header, a horizontal rule, or end of string.
+  return insight.replace(
+    /(\*\*🔗\s*Related Analyses\*\*|###\s*🔗\s*Related Analyses)[\s\S]*?(?=(\n###\s|\n---|\n\*\*[^\n]+\*\*\n|$))/gi,
+    ""
+  ).trim();
+}
+
+// =====================================================
 // MAIN APP
 // =====================================================
 
@@ -329,17 +408,24 @@ function App() {
   const [response, setResponse]   = useState(null);
   const [loading, setLoading]     = useState(false);
   const [darkMode, setDarkMode]   = useState(true);
-  const [excelFile, setExcelFile] = useState(null);   // { name, base64, ext }
-  const [excelMode, setExcelMode] = useState(false);
+
+  // mode: "db" | "nvplay" | "generic"
+  const [mode, setMode] = useState("db");
+
+  // Separate file slots for the two file-based modes
+  const [nvFile, setNvFile]           = useState(null); // { name, base64, ext }
+  const [genericFile, setGenericFile] = useState(null);
+
   const [fileError, setFileError] = useState("");
-  const fileInputRef              = useRef(null);
+  const nvFileInputRef      = useRef(null);
+  const genericFileInputRef = useRef(null);
 
   const API_URL =
     process.env.REACT_APP_API_URL ||
     "https://cricket-scorer-api-zztcl7ejrq-uc.a.run.app";
 
   // ── File handling ───────────────────────────────────
-  const processFile = async (file) => {
+  const processFile = async (file, target) => {
     if (!file) return;
     setFileError("");
 
@@ -362,49 +448,87 @@ function App() {
       reader.readAsDataURL(file);
     });
 
-    setExcelFile({ name: file.name, base64, ext });
-    setExcelMode(true);
+    const payload = { name: file.name, base64, ext };
+    if (target === "nvplay") {
+      setNvFile(payload);
+      setMode("nvplay");
+    } else {
+      setGenericFile(payload);
+      setMode("generic");
+    }
   };
 
-  const handleFileChange = (e) => processFile(e.target.files[0]);
+  const handleNvFileChange = (e)      => processFile(e.target.files[0], "nvplay");
+  const handleGenericFileChange = (e) => processFile(e.target.files[0], "generic");
 
-  const handleDrop = (e) => {
+  const handleNvDrop = (e) => {
     e.preventDefault();
-    processFile(e.dataTransfer.files[0]);
+    processFile(e.dataTransfer.files[0], "nvplay");
+  };
+  const handleGenericDrop = (e) => {
+    e.preventDefault();
+    processFile(e.dataTransfer.files[0], "generic");
   };
 
-  const removeFile = () => {
-    setExcelFile(null);
-    setExcelMode(false);
+  const removeNvFile = () => {
+    setNvFile(null);
     setFileError("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (nvFileInputRef.current) nvFileInputRef.current.value = "";
+  };
+  const removeGenericFile = () => {
+    setGenericFile(null);
+    setFileError("");
+    if (genericFileInputRef.current) genericFileInputRef.current.value = "";
   };
 
   // ── Submit ──────────────────────────────────────────
-  const askQuestion = async () => {
-    if (!question.trim()) return;
+  const askQuestion = async (overrideQ) => {
+    const q = (overrideQ ?? question).trim();
+    if (!q) return;
+
+    if (overrideQ) setQuestion(overrideQ);
+
     setLoading(true);
     setResponse(null);
 
     try {
       let endpoint, body;
 
-      if (excelMode && excelFile) {
+      if (mode === "nvplay" && nvFile) {
         endpoint = `${API_URL}/ask-excel`;
         body = JSON.stringify({
-          question,
-          file_base64: excelFile.base64,
-          file_name:   excelFile.name,
-          file_ext:    excelFile.ext,
+          question: q,
+          file_base64: nvFile.base64,
+          file_name:   nvFile.name,
+          file_ext:    nvFile.ext,
+        });
+      } else if (mode === "generic" && genericFile) {
+        endpoint = `${API_URL}/ask-generic-excel`;
+        body = JSON.stringify({
+          question: q,
+          file_base64: genericFile.base64,
+          file_name:   genericFile.name,
+          file_ext:    genericFile.ext,
         });
       } else {
         endpoint = `${API_URL}/ask`;
-        body = JSON.stringify({ question, session_context: [] });
+        body = JSON.stringify({ question: q, session_context: [] });
       }
 
       const res  = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body });
       const data = await res.json();
-      setResponse({ ...data, _source: excelMode ? "excel" : "db", _fileName: excelFile?.name });
+
+      const fileName = mode === "nvplay" ? nvFile?.name
+                     : mode === "generic" ? genericFile?.name : undefined;
+
+      setResponse({ ...data, _source: mode, _fileName: fileName });
+
+      // Scroll the response into view smoothly after a tick
+      setTimeout(() => {
+        const el = document.querySelector(".response-section");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+
     } catch (err) {
       console.error(err);
       setResponse({ _error: "Failed to reach the server. Please try again." });
@@ -416,6 +540,42 @@ function App() {
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) askQuestion();
   };
+
+  // Tab switching — block switching to file modes if file not loaded
+  const switchTo = (target) => {
+    setFileError("");
+    if (target === "db") { setMode("db"); return; }
+    if (target === "nvplay") {
+      if (nvFile) setMode("nvplay");
+      else nvFileInputRef.current?.click();
+      return;
+    }
+    if (target === "generic") {
+      if (genericFile) setMode("generic");
+      else genericFileInputRef.current?.click();
+      return;
+    }
+  };
+
+  // Computed: is the input disabled?
+  const inputDisabled = loading
+    || (mode === "nvplay"  && !nvFile)
+    || (mode === "generic" && !genericFile);
+
+  // Placeholder
+  let placeholder = "e.g. Who scored the most runs? Which team has the best win rate?";
+  if (mode === "nvplay" && !nvFile)
+    placeholder = "Upload an NV-Play file first, then ask your question...";
+  if (mode === "generic" && !genericFile)
+    placeholder = "Upload an Excel/CSV file first, then ask your question...";
+  if (mode === "generic" && genericFile)
+    placeholder = "Ask anything about your data: 'Top 5 by revenue', 'Trend by month', etc.";
+
+  // Submit button label
+  let submitLabel = "Ask AI ✦";
+  if (loading) submitLabel = "Analysing…";
+  else if (mode === "nvplay")  submitLabel = "Ask AI (NV-Play) ✦";
+  else if (mode === "generic") submitLabel = "Ask AI (File) ✦";
 
   // ── Render ──────────────────────────────────────────
   return (
@@ -439,43 +599,76 @@ function App() {
         <div className="input-section">
           <label className="input-label">Ask a cricket analytics question</label>
 
-          {/* SOURCE TOGGLE */}
+          {/* SOURCE TOGGLE — THREE TABS */}
           <div className="source-toggle">
             <button
-              className={`source-tab${!excelMode ? " active" : ""}`}
-              onClick={() => { setExcelMode(false); setFileError(""); }}
+              className={`source-tab${mode === "db" ? " active" : ""}`}
+              onClick={() => switchTo("db")}
             >
               🗄️ Database
             </button>
             <button
-              className={`source-tab${excelMode ? " active" : ""}`}
-              onClick={() => { if (excelFile) setExcelMode(true); else fileInputRef.current?.click(); }}
+              className={`source-tab${mode === "nvplay" ? " active" : ""}`}
+              onClick={() => switchTo("nvplay")}
             >
-              📂 Excel / CSV
-              {excelFile && <span className="tab-file-dot" />}
+              🏏 NV-Play Excel/CSV
+              {nvFile && <span className="tab-file-dot" />}
+            </button>
+            <button
+              className={`source-tab${mode === "generic" ? " active" : ""}`}
+              onClick={() => switchTo("generic")}
+            >
+              📊 Excel/CSV
+              {genericFile && <span className="tab-file-dot generic-dot" />}
             </button>
           </div>
 
-          {/* FILE ZONE — shown only in excel mode */}
-          {excelMode && (
+          {/* NV-PLAY FILE ZONE */}
+          {mode === "nvplay" && (
             <div className="file-zone">
-              {!excelFile ? (
+              {!nvFile ? (
                 <div
                   className="file-dropzone"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => nvFileInputRef.current?.click()}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
+                  onDrop={handleNvDrop}
                 >
                   <span className="dropzone-icon">📤</span>
-                  <p className="dropzone-text">Click or drag &amp; drop your file here</p>
+                  <p className="dropzone-text">Click or drag &amp; drop your NV-Play file here</p>
                   <p className="dropzone-hint">Supports .xlsx, .xls, .csv &nbsp;·&nbsp; Max 20 MB</p>
                   <p className="dropzone-hint">Columns must match the nv_play table schema</p>
                 </div>
               ) : (
                 <div className="file-pill">
                   <span className="file-pill-icon">📄</span>
-                  <span className="file-pill-name">{excelFile.name}</span>
-                  <button className="file-pill-remove" onClick={removeFile} title="Remove file">✕</button>
+                  <span className="file-pill-name">{nvFile.name}</span>
+                  <button className="file-pill-remove" onClick={removeNvFile} title="Remove file">✕</button>
+                </div>
+              )}
+              {fileError && <p className="file-error">⚠️ {fileError}</p>}
+            </div>
+          )}
+
+          {/* GENERIC FILE ZONE */}
+          {mode === "generic" && (
+            <div className="file-zone">
+              {!genericFile ? (
+                <div
+                  className="file-dropzone generic-dropzone"
+                  onClick={() => genericFileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleGenericDrop}
+                >
+                  <span className="dropzone-icon">📤</span>
+                  <p className="dropzone-text">Click or drag &amp; drop any Excel/CSV file here</p>
+                  <p className="dropzone-hint">Supports .xlsx, .xls, .csv &nbsp;·&nbsp; Max 20 MB</p>
+                  <p className="dropzone-hint">Any schema — AI will adapt to your columns</p>
+                </div>
+              ) : (
+                <div className="file-pill generic-pill">
+                  <span className="file-pill-icon">📊</span>
+                  <span className="file-pill-name">{genericFile.name}</span>
+                  <button className="file-pill-remove" onClick={removeGenericFile} title="Remove file">✕</button>
                 </div>
               )}
               {fileError && <p className="file-error">⚠️ {fileError}</p>}
@@ -485,39 +678,42 @@ function App() {
           {/* TEXTAREA */}
           <div className="textarea-wrapper">
             <textarea
-              placeholder={
-                excelMode && !excelFile
-                  ? "Upload a file first, then ask your question..."
-                  : "e.g. Who scored the most runs? Which team has the best win rate?"
-              }
+              placeholder={placeholder}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={loading || (excelMode && !excelFile)}
+              disabled={inputDisabled}
             />
             <span className="textarea-hint">Ctrl + Enter to submit</span>
           </div>
 
           <button
-            onClick={askQuestion}
-            disabled={loading || !question.trim() || (excelMode && !excelFile)}
+            onClick={() => askQuestion()}
+            disabled={inputDisabled || !question.trim()}
             className={loading ? "btn-loading" : ""}
           >
-            {loading ? "Analysing…" : excelMode ? "Ask AI (File) ✦" : "Ask AI ✦"}
+            {submitLabel}
           </button>
         </div>
 
-        {/* HIDDEN INPUT */}
+        {/* HIDDEN INPUTS */}
         <input
-          ref={fileInputRef}
+          ref={nvFileInputRef}
           type="file"
           accept=".xlsx,.xls,.csv"
           style={{ display: "none" }}
-          onChange={handleFileChange}
+          onChange={handleNvFileChange}
+        />
+        <input
+          ref={genericFileInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          style={{ display: "none" }}
+          onChange={handleGenericFileChange}
         />
 
         {/* LOADING */}
-        {loading && <LoadingOverlay darkMode={darkMode} isExcel={excelMode} />}
+        {loading && <LoadingOverlay darkMode={darkMode} mode={mode} />}
 
         {/* ERROR */}
         {!loading && response?._error && (
@@ -531,7 +727,7 @@ function App() {
         {!loading && response && !response._error && (
           <div className="response-section">
 
-            <SourceBadge isExcel={response._source === "excel"} fileName={response._fileName} />
+            <SourceBadge source={response._source} fileName={response._fileName} />
 
             <div className="card question-card">
               <h3>Your Question</h3>
@@ -543,10 +739,17 @@ function App() {
               )}
             </div>
 
+            {/* QUICK ANSWER — appears BEFORE chart */}
+            <QuickAnswerCard quickAnswer={response.quick_answer} />
+
             <CollapsibleResults
               results={response.results}
               darkMode={darkMode}
-              label={response._source === "excel" ? "File Results" : "Database Results"}
+              label={
+                response._source === "nvplay"  ? "NV-Play File Results" :
+                response._source === "generic" ? "File Results" :
+                "Database Results"
+              }
             />
 
             {response.chart_config && (
@@ -560,13 +763,19 @@ function App() {
             )}
 
             <div className="card insight-card">
-              <h3>AI Cricket Insight</h3>
+              <h3>AI {response._source === "generic" ? "Data" : "Cricket"} Insight</h3>
               <div className="markdown-body">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {response.insight}
+                  {stripRelatedSection(response.insight)}
                 </ReactMarkdown>
               </div>
             </div>
+
+            {/* CLICKABLE RELATED QUESTIONS */}
+            <RelatedQuestions
+              questions={response.related_questions}
+              onAsk={(q) => askQuestion(q)}
+            />
 
           </div>
         )}
