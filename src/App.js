@@ -108,14 +108,71 @@ function LoadingOverlay({ darkMode, mode }) {
 // QUICK ANSWER CARD (TL;DR)
 // =====================================================
 
-function QuickAnswerCard({ quickAnswer }) {
-  if (!quickAnswer) return null;
+// =====================================================
+// QUICK ANSWER CARD (TL;DR)
+// =====================================================
+
+function buildClientFallbackAnswer(response) {
+  // Last-resort, client-side fallback if backend returns no quick_answer.
+  // Builds a real data-driven sentence from the densest result set.
+  try {
+    const results = response?.results || [];
+    let best = null;
+    for (const r of results) {
+      const rows = r?.results || [];
+      if (!best || rows.length > (best.results?.length || 0)) best = r;
+    }
+    const rows = best?.results || [];
+    if (rows.length === 0) {
+      return "**No matching records were found** for your question. Try broadening the filters or rephrasing the question to use different metrics or entity names.";
+    }
+    const first = rows[0];
+    const keys = Object.keys(first);
+    const numericKeys = keys.filter(k => typeof first[k] === "number");
+    const textKeys = keys.filter(k => typeof first[k] !== "number");
+    const entityKey = textKeys[0];
+    if (rows.length === 1 && numericKeys.length) {
+      const parts = numericKeys.slice(0, 3).map(k => `**${k.replace(/_/g, " ")}** = **${first[k]}**`);
+      const label = entityKey ? `For **${first[entityKey]}**, ` : "";
+      return `${label}${parts.join(", ")}.`;
+    }
+    if (entityKey && numericKeys.length) {
+      const metric = numericKeys[0];
+      const top = rows[0], second = rows[1], third = rows[2];
+      let text = `**${top[entityKey]}** leads with **${top[metric]} ${metric.replace(/_/g, " ")}**`;
+      if (second) text += `, followed by **${second[entityKey]}** at **${second[metric]}**`;
+      if (third) text += ` and **${third[entityKey]}** at **${third[metric]}**`;
+      text += `. Total of **${rows.length} records** returned.`;
+      return text;
+    }
+    return `Query returned **${rows.length} rows** with columns **${keys.slice(0, 6).join(", ")}**.`;
+  } catch (e) {
+    return "**Results were returned.** See the table below for full details.";
+  }
+}
+
+function isVagueAnswer(text) {
+  if (!text) return true;
+  const t = text.toLowerCase();
+  return (
+    t.includes("detailed analysis is available") ||
+    t.includes("see the data table") ||
+    t.includes("see the full insight") ||
+    t.trim().length < 20
+  );
+}
+
+function QuickAnswerCard({ quickAnswer, response }) {
+  // ALWAYS render — if backend gave nothing useful, build it client-side from results.
+  const text = !isVagueAnswer(quickAnswer)
+    ? quickAnswer
+    : buildClientFallbackAnswer(response);
   return (
     <div className="card quick-answer-card">
       <h3>⚡ Quick Answer</h3>
       <div className="quick-answer-body">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {quickAnswer}
+          {text}
         </ReactMarkdown>
       </div>
     </div>
@@ -422,7 +479,7 @@ function App() {
 
   const API_URL =
     process.env.REACT_APP_API_URL ||
-    "https://cricket-scorer-api-zztcl7ejrq-uc.a.run.app";
+    "https://cricket-scorer-api-106171733624.europe-west2.run.app";
 
   // ── File handling ───────────────────────────────────
   const processFile = async (file, target) => {
@@ -739,8 +796,8 @@ function App() {
               )}
             </div>
 
-            {/* QUICK ANSWER — appears BEFORE chart */}
-            <QuickAnswerCard quickAnswer={response.quick_answer} />
+            {/* QUICK ANSWER — appears BEFORE chart, ALWAYS rendered */}
+            <QuickAnswerCard quickAnswer={response.quick_answer} response={response} />
 
             <CollapsibleResults
               results={response.results}
@@ -752,15 +809,24 @@ function App() {
               }
             />
 
-            {response.chart_config && (
-              <div className="card chart-card">
-                <h3>📊 {response.chart_config.title || "Visual Analysis"}</h3>
-                {response.chart_config.subtitle && (
-                  <p className="chart-subtitle">{response.chart_config.subtitle}</p>
-                )}
-                <CricketChart chartConfig={response.chart_config} darkMode={darkMode} />
-              </div>
-            )}
+            {(() => {
+              const cc = response.chart_config;
+              if (!cc || !Array.isArray(cc.data) || cc.data.length === 0) return null;
+              const yk = Array.isArray(cc.y_keys) ? cc.y_keys : (cc.y_keys ? [cc.y_keys] : []);
+              if (!cc.x_key || yk.length === 0) return null;
+              // Require at least one row with a real numeric value on any y_key
+              const hasRealNumber = cc.data.some(row =>
+                yk.some(k => typeof row[k] === "number" && !isNaN(row[k]))
+              );
+              if (!hasRealNumber) return null;
+              return (
+                <div className="card chart-card">
+                  <h3>📊 {cc.title || "Visual Analysis"}</h3>
+                  {cc.subtitle && <p className="chart-subtitle">{cc.subtitle}</p>}
+                  <CricketChart chartConfig={cc} darkMode={darkMode} />
+                </div>
+              );
+            })()}
 
             <div className="card insight-card">
               <h3>AI {response._source === "generic" ? "Data" : "Cricket"} Insight</h3>

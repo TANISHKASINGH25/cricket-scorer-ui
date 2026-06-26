@@ -960,3 +960,127 @@ pre {
     padding: 11px 14px;
   }
 }
+
+/* =================================================
+   v3.4.0 PATCHES — white button text + overflow fixes
+   ================================================= */
+
+/* All buttons get white text regardless of state */
+button,
+.theme-btn,
+.input-section button,
+.source-tab,
+.related-chip,
+.tab-button,
+.action-btn,
+.file-btn,
+.upload-btn {
+  color: #ffffff !important;
+}
+
+/* Source tabs always show white text, even when inactive */
+.dark  .source-tab,
+.light .source-tab {
+  color: #ffffff !important;
+}
+.dark  .source-tab:not(.active) { background-color: #2a2a2a; }
+.light .source-tab:not(.active) { background-color: #555; }
+
+.source-tab:hover:not(.active),
+.source-tab:hover:not(.active):nth-child(3) {
+  color: #ffffff !important;
+  filter: brightness(1.15);
+}
+
+/* Related chips — white text in both themes */
+.dark  .related-chip,
+.light .related-chip,
+.related-chip {
+  color: #ffffff !important;
+  background-color: rgba(0,200,160,0.18);
+}
+.light .related-chip { background-color: rgba(0,160,120,0.85); }
+.related-chip:hover { color: #ffffff !important; }
+.related-chip-icon  { color: #ffffff !important; }
+
+/* =================================================
+   OVERFLOW SAFEGUARDS — nothing escapes the card border
+   ================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.card,
+.quick-answer-card,
+.related-card,
+.chart-card,
+.insight-card,
+.collapsible-content,
+.markdown-body {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden;
+}
+
+/* Tables inside cards become horizontally scrollable
+   instead of overflowing the card border */
+.markdown-body table,
+.collapsible-content table,
+.card table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown-body table thead,
+.markdown-body table tbody,
+.card table thead,
+.card table tbody {
+  display: table;
+  width: 100%;
+  table-layout: auto;
+}
+
+.markdown-body td,
+.markdown-body th,
+.card td,
+.card th {
+  word-break: break-word;
+  white-space: normal;
+  max-width: 320px;
+}
+
+/* Long unbroken strings (URLs, ids) wrap instead of pushing layout */
+.markdown-body code,
+.markdown-body pre,
+.card code,
+.card pre {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Chart wrapper — never overflow horizontally */
+.chart-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Quick answer body — keep bold highlights readable but contained */
+.quick-answer-body {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Outer page container — prevent horizontal page scroll */
+html, body, #root, .App, .dark, .light {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
