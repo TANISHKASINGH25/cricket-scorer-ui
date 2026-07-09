@@ -22,83 +22,67 @@ const CHART_COLORS = [
 ];
 
 // =====================================================
-// LOADING MESSAGES
+// SKELETON LOADER — refined, premium
 // =====================================================
 
-const LOADING_MESSAGES = [
-  "🏏 Tossing the coin...",
-  "📊 Reading the pitch conditions...",
-  "🔍 Scanning match records...",
-  "🧠 Crunching the numbers...",
-  "🎯 Analysing player form...",
-  "📡 Fetching live stats...",
-  "⚡ Running the query...",
-  "🏟️ Checking the scorecard...",
-  "🧮 Computing batting averages...",
-  "🌐 Consulting the scorebook...",
-];
+const LOADING_MESSAGES = {
+  db: [
+    { title: "Reading the pitch", sub: "Parsing your cricket question" },
+    { title: "Consulting the scorebook", sub: "Building the query plan" },
+    { title: "Running the analysis", sub: "Aggregating ball-by-ball data" },
+    { title: "Crunching the numbers", sub: "Computing averages and rates" },
+    { title: "Preparing insights", sub: "Turning data into a scorecard" },
+  ],
+  nvplay: [
+    { title: "Loading your NV-Play file", sub: "Parsing ball-by-ball rows" },
+    { title: "Profiling the columns", sub: "Understanding your data" },
+    { title: "Running in-memory SQL", sub: "Executing the query plan" },
+    { title: "Crunching your stats", sub: "Building the scorecard" },
+    { title: "Preparing insights", sub: "Almost there" },
+  ],
+  generic: [
+    { title: "Reading your spreadsheet", sub: "Parsing rows and columns" },
+    { title: "Profiling the schema", sub: "Understanding your data shape" },
+    { title: "Running the analysis", sub: "Executing SQL on your file" },
+    { title: "Extracting patterns", sub: "Finding the key numbers" },
+    { title: "Preparing insights", sub: "Almost there" },
+  ],
+};
 
-const EXCEL_LOADING_MESSAGES = [
-  "📂 Reading your Excel file...",
-  "🧮 Parsing ball-by-ball data...",
-  "🔍 Scanning innings records...",
-  "📊 Building the data model...",
-  "🏏 Crunching your stats...",
-  "⚡ Running in-memory SQL...",
-  "🎯 Extracting key insights...",
-  "📈 Preparing your analysis...",
-];
-
-const GENERIC_LOADING_MESSAGES = [
-  "📂 Reading your spreadsheet...",
-  "🧠 Understanding your columns...",
-  "🔍 Profiling the data...",
-  "⚡ Running SQL on your file...",
-  "📊 Building the analysis...",
-  "🎯 Extracting key insights...",
-  "📈 Preparing your answer...",
-];
-
-// =====================================================
-// LOADING OVERLAY
-// =====================================================
-
-function LoadingOverlay({ darkMode, mode }) {
-  let messages = LOADING_MESSAGES;
-  if (mode === "nvplay") messages = EXCEL_LOADING_MESSAGES;
-  if (mode === "generic") messages = GENERIC_LOADING_MESSAGES;
-
-  const [msgIndex, setMsgIndex] = useState(0);
-  const [fade, setFade] = useState(true);
+function LoadingSkeleton({ mode }) {
+  const messages = LOADING_MESSAGES[mode] || LOADING_MESSAGES.db;
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setFade(false);
-      setTimeout(() => {
-        setMsgIndex(prev => (prev + 1) % messages.length);
-        setFade(true);
-      }, 300);
+      setIdx(prev => (prev + 1) % messages.length);
     }, 2200);
     return () => clearInterval(interval);
   }, [messages]);
 
-  const ballClass = mode === "nvplay" ? " excel-ball"
-                   : mode === "generic" ? " generic-ball" : "";
+  const current = messages[idx];
 
   return (
-    <div className="loading-overlay">
-      <div className="cricket-ball-wrapper">
-        <div className={`cricket-ball${ballClass}`}>
-          <div className="seam seam-h" />
-          <div className="seam seam-v" />
+    <div className="skeleton-loader">
+      <div className="skeleton-status-row">
+        <div className="skeleton-pulse-dot" />
+        <div>
+          <div className="skeleton-status">{current.title}</div>
+          <div className="skeleton-status-sub">{current.sub}</div>
         </div>
-        <div className="ball-shadow" />
       </div>
-      <p className={`loading-msg ${fade ? "fade-in" : "fade-out"}`}>
-        {messages[msgIndex]}
-      </p>
-      <div className="loading-dots">
-        <span /><span /><span /><span /><span />
+
+      <div className="skeleton-scorecard">
+        <div className="skeleton-row skeleton-row-xl" />
+        <div className="skeleton-row skeleton-row-lg" />
+        <div className="skeleton-cells">
+          <div className="skeleton-cell" />
+          <div className="skeleton-cell" />
+          <div className="skeleton-cell" />
+          <div className="skeleton-cell" />
+        </div>
+        <div className="skeleton-row skeleton-row-md" />
+        <div className="skeleton-row skeleton-row-sm" />
       </div>
     </div>
   );
@@ -207,6 +191,64 @@ function RelatedQuestions({ questions, onAsk }) {
 }
 
 // =====================================================
+// SCHEMA MISMATCH MODAL
+// =====================================================
+
+function SchemaMismatchModal({ info, onClose, onSwitchToGeneric }) {
+  if (!info) return null;
+  return (
+    <div className="schema-modal-backdrop" onClick={onClose}>
+      <div className="schema-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="schema-modal-header">
+          <span className="schema-modal-icon">⚠️</span>
+          <h3>Content type not match</h3>
+          <button className="schema-modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className="schema-modal-body">
+          <p className="schema-modal-lead">
+            <strong>Use the Excel/CSV tab for the analysis.</strong>
+          </p>
+          <p className="schema-modal-sub">
+            The file <strong>{info.fileName || "you uploaded"}</strong> doesn't look like an NV-Play
+            ball-by-ball file. NV-Play files need at least{" "}
+            <strong>{info.requiredCount}</strong> of the core cricket columns
+            (found only <strong>{info.matchCount ?? 0}</strong>).
+          </p>
+          {info.missing && info.missing.length > 0 && (
+            <div className="schema-modal-cols">
+              <p className="schema-modal-col-label">Missing columns:</p>
+              <div className="schema-chip-row">
+                {info.missing.map((c) => (
+                  <span key={c} className="schema-chip missing">{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {info.matched && info.matched.length > 0 && (
+            <div className="schema-modal-cols">
+              <p className="schema-modal-col-label">Matched columns:</p>
+              <div className="schema-chip-row">
+                {info.matched.map((c) => (
+                  <span key={c} className="schema-chip matched">{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="schema-modal-actions">
+          <button className="schema-btn-primary" onClick={onSwitchToGeneric}>
+            Switch to Excel/CSV tab
+          </button>
+          <button className="schema-btn-secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
 // COLLAPSIBLE DATABASE RESULTS
 // =====================================================
 
@@ -230,18 +272,20 @@ function CollapsibleResults({ results, darkMode, label }) {
         </h3>
         <span className={`chevron ${open ? "open" : ""}`}>▾</span>
       </div>
-      {open && (
-        <div className="collapsible-body">
-          {results?.map((q, i) => (
-            <div key={i} className="query-result-block">
-              <p className="query-result-label">
-                <strong>{q.query_name}</strong> — {q.purpose}
-              </p>
-              <pre>{JSON.stringify(q.results, null, 2)}</pre>
-            </div>
-          ))}
+      <div className={`collapsible-wrapper${open ? " open" : ""}`}>
+        <div className="collapsible-inner">
+          <div className="collapsible-body">
+            {results?.map((q, i) => (
+              <div key={i} className="query-result-block">
+                <p className="query-result-label">
+                  <strong>{q.query_name}</strong> — {q.purpose}
+                </p>
+                <pre>{JSON.stringify(q.results, null, 2)}</pre>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -474,6 +518,8 @@ function App() {
   const [genericFile, setGenericFile] = useState(null);
 
   const [fileError, setFileError] = useState("");
+  const [schemaMismatch, setSchemaMismatch] = useState(null); // {message, missing_columns, matched_columns}
+  const [dragOverTarget, setDragOverTarget] = useState(null); // 'nvplay' | 'generic' | null
   const nvFileInputRef      = useRef(null);
   const genericFileInputRef = useRef(null);
 
@@ -520,11 +566,23 @@ function App() {
 
   const handleNvDrop = (e) => {
     e.preventDefault();
+    setDragOverTarget(null);
     processFile(e.dataTransfer.files[0], "nvplay");
   };
   const handleGenericDrop = (e) => {
     e.preventDefault();
+    setDragOverTarget(null);
     processFile(e.dataTransfer.files[0], "generic");
+  };
+  const handleDragOver = (e, target) => {
+    e.preventDefault();
+    if (dragOverTarget !== target) setDragOverTarget(target);
+  };
+  const handleDragLeave = (e, target) => {
+    // Only clear when actually leaving the dropzone (not children)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      if (dragOverTarget === target) setDragOverTarget(null);
+    }
   };
 
   const removeNvFile = () => {
@@ -575,6 +633,22 @@ function App() {
       const res  = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body });
       const data = await res.json();
 
+      // ── NV-Play schema-mismatch handling ──
+      if (data && data.schema_mismatch) {
+        setSchemaMismatch({
+          message: data.message || "Content type not match. Use the Excel/CSV tab for analysis.",
+          matched: data.matched_columns || [],
+          missing: data.missing_columns || [],
+          expected: data.expected_columns || [],
+          matchCount: data.match_count,
+          requiredCount: data.required_count,
+          fileName: nvFile?.name,
+        });
+        setResponse(null);
+        setLoading(false);
+        return;
+      }
+
       const fileName = mode === "nvplay" ? nvFile?.name
                      : mode === "generic" ? genericFile?.name : undefined;
 
@@ -595,7 +669,11 @@ function App() {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) askQuestion();
+    // Enter alone submits; Shift+Enter inserts a newline.
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      askQuestion();
+    }
   };
 
   // Tab switching — block switching to file modes if file not loaded
@@ -642,7 +720,7 @@ function App() {
       <div className="header">
         <div className="header-brand">
           <span className="header-icon">🏏</span>
-          <h1>Cricket_Scorer_Pro</h1>
+          <h1>Cricket_Scorer<span className="brand-accent">_Pro</span></h1>
         </div>
         <button className="theme-btn" onClick={() => setDarkMode(!darkMode)}>
           {darkMode ? "☀️ Light" : "🌙 Dark"}
@@ -656,27 +734,38 @@ function App() {
         <div className="input-section">
           <label className="input-label">Ask a cricket analytics question</label>
 
-          {/* SOURCE TOGGLE — THREE TABS */}
-          <div className="source-toggle">
+          {/* SOURCE TOGGLE — segmented control with sliding indicator */}
+          <div
+            className="source-toggle"
+            data-active={mode === "db" ? 0 : mode === "nvplay" ? 1 : 2}
+            role="tablist"
+          >
+            <div className="source-toggle-indicator" aria-hidden="true" />
             <button
               className={`source-tab${mode === "db" ? " active" : ""}`}
               onClick={() => switchTo("db")}
+              role="tab"
+              aria-selected={mode === "db"}
             >
               🗄️ Database
             </button>
             <button
               className={`source-tab${mode === "nvplay" ? " active" : ""}`}
               onClick={() => switchTo("nvplay")}
+              role="tab"
+              aria-selected={mode === "nvplay"}
             >
-              🏏 NV-Play Excel/CSV
+              🏏 NV-Play File
               {nvFile && <span className="tab-file-dot" />}
             </button>
             <button
               className={`source-tab${mode === "generic" ? " active" : ""}`}
               onClick={() => switchTo("generic")}
+              role="tab"
+              aria-selected={mode === "generic"}
             >
-              📊 Excel/CSV
-              {genericFile && <span className="tab-file-dot generic-dot" />}
+              📊 Excel / CSV
+              {genericFile && <span className="tab-file-dot" />}
             </button>
           </div>
 
@@ -685,20 +774,28 @@ function App() {
             <div className="file-zone">
               {!nvFile ? (
                 <div
-                  className="file-dropzone"
+                  className={`file-dropzone${dragOverTarget === "nvplay" ? " dragging" : ""}`}
                   onClick={() => nvFileInputRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragOver={(e) => handleDragOver(e, "nvplay")}
+                  onDragLeave={(e) => handleDragLeave(e, "nvplay")}
                   onDrop={handleNvDrop}
                 >
-                  <span className="dropzone-icon">📤</span>
-                  <p className="dropzone-text">Click or drag &amp; drop your NV-Play file here</p>
-                  <p className="dropzone-hint">Supports .xlsx, .xls, .csv &nbsp;·&nbsp; Max 20 MB</p>
-                  <p className="dropzone-hint">Columns must match the nv_play table schema</p>
+                  <span className="dropzone-icon">
+                    {dragOverTarget === "nvplay" ? "📥" : "📤"}
+                  </span>
+                  <p className="dropzone-text">
+                    {dragOverTarget === "nvplay"
+                      ? "Drop to upload"
+                      : "Click or drag your NV-Play file here"}
+                  </p>
+                  <p className="dropzone-hint">.xlsx · .xls · .csv &nbsp;·&nbsp; Max 20 MB</p>
+                  <p className="dropzone-hint">Must match the nv_play ball-by-ball schema</p>
                 </div>
               ) : (
                 <div className="file-pill">
-                  <span className="file-pill-icon">📄</span>
+                  <span className="file-pill-icon">🏏</span>
                   <span className="file-pill-name">{nvFile.name}</span>
+                  <span className="file-pill-meta">NV-Play</span>
                   <button className="file-pill-remove" onClick={removeNvFile} title="Remove file">✕</button>
                 </div>
               )}
@@ -711,20 +808,28 @@ function App() {
             <div className="file-zone">
               {!genericFile ? (
                 <div
-                  className="file-dropzone generic-dropzone"
+                  className={`file-dropzone${dragOverTarget === "generic" ? " dragging" : ""}`}
                   onClick={() => genericFileInputRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragOver={(e) => handleDragOver(e, "generic")}
+                  onDragLeave={(e) => handleDragLeave(e, "generic")}
                   onDrop={handleGenericDrop}
                 >
-                  <span className="dropzone-icon">📤</span>
-                  <p className="dropzone-text">Click or drag &amp; drop any Excel/CSV file here</p>
-                  <p className="dropzone-hint">Supports .xlsx, .xls, .csv &nbsp;·&nbsp; Max 20 MB</p>
-                  <p className="dropzone-hint">Any schema — AI will adapt to your columns</p>
+                  <span className="dropzone-icon">
+                    {dragOverTarget === "generic" ? "📥" : "📤"}
+                  </span>
+                  <p className="dropzone-text">
+                    {dragOverTarget === "generic"
+                      ? "Drop to upload"
+                      : "Click or drag any Excel/CSV file here"}
+                  </p>
+                  <p className="dropzone-hint">.xlsx · .xls · .csv &nbsp;·&nbsp; Max 20 MB</p>
+                  <p className="dropzone-hint">Any schema — AI adapts to your columns</p>
                 </div>
               ) : (
-                <div className="file-pill generic-pill">
+                <div className="file-pill">
                   <span className="file-pill-icon">📊</span>
                   <span className="file-pill-name">{genericFile.name}</span>
+                  <span className="file-pill-meta">Excel/CSV</span>
                   <button className="file-pill-remove" onClick={removeGenericFile} title="Remove file">✕</button>
                 </div>
               )}
@@ -741,13 +846,25 @@ function App() {
               onKeyDown={handleKeyDown}
               disabled={inputDisabled}
             />
-            <span className="textarea-hint">Ctrl + Enter to submit</span>
+            <span className="textarea-hint">Enter to submit · Shift+Enter for newline</span>
           </div>
+
+          {/* Inline helper — explains disabled state clearly */}
+          {inputDisabled && !loading && (
+            <p className="input-helper">
+              <span className="input-helper-icon">💡</span>
+              {mode === "nvplay"
+                ? "Upload an NV-Play ball-by-ball file above before asking a question."
+                : mode === "generic"
+                ? "Upload any Excel or CSV file above before asking a question."
+                : "The input is currently unavailable."}
+            </p>
+          )}
 
           <button
             onClick={() => askQuestion()}
             disabled={inputDisabled || !question.trim()}
-            className={loading ? "btn-loading" : ""}
+            className={`ask-btn${loading ? " btn-loading" : ""}`}
           >
             {submitLabel}
           </button>
@@ -770,7 +887,23 @@ function App() {
         />
 
         {/* LOADING */}
-        {loading && <LoadingOverlay darkMode={darkMode} mode={mode} />}
+        {/* SCHEMA MISMATCH MODAL */}
+        <SchemaMismatchModal
+          info={schemaMismatch}
+          onClose={() => setSchemaMismatch(null)}
+          onSwitchToGeneric={() => {
+            // Reuse the same file in the Generic tab
+            if (nvFile) {
+              setGenericFile(nvFile);
+              setNvFile(null);
+              if (nvFileInputRef.current) nvFileInputRef.current.value = "";
+            }
+            setMode("generic");
+            setSchemaMismatch(null);
+          }}
+        />
+
+        {loading && <LoadingSkeleton mode={mode} />}
 
         {/* ERROR */}
         {!loading && response?._error && (
