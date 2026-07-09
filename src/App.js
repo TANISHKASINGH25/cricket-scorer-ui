@@ -13,12 +13,18 @@ import {
 import "./App.css";
 
 // =====================================================
-// CHART COLORS
+// CHART COLORS — cricPRO palette
 // =====================================================
 
 const CHART_COLORS = [
-  "#ff4d4d", "#ff8c00", "#ffd700", "#00c8a0",
-  "#4da6ff", "#b266ff", "#ff66b2", "#66ffcc",
+  "#00FFA4", // primary green (neon)
+  "#00D4FF", // electric cyan
+  "#176BFF", // deep blue
+  "#9B5CFF", // six purple
+  "#FFC857", // milestone gold
+  "#00C853", // field green
+  "#63B3ED", // sky blue accent
+  "#B794F4", // lavender accent
 ];
 
 // =====================================================
@@ -315,17 +321,32 @@ const CustomTooltip = ({ active, payload, label, darkMode }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{
-        background: darkMode ? "#1f1f1f" : "#fff",
-        border: "1px solid #8b0000",
+        background: darkMode ? "rgba(11, 27, 46, 0.95)" : "#ffffff",
+        border: `1px solid ${darkMode ? "rgba(0, 212, 255, 0.35)" : "#D5E7F2"}`,
         borderRadius: "10px",
         padding: "10px 14px",
-        fontSize: "13px",
-        color: darkMode ? "white" : "black",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+        fontSize: "12.5px",
+        color: darkMode ? "#F8FBFF" : "#07111F",
+        boxShadow: darkMode
+          ? "0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(0,212,255,0.15)"
+          : "0 4px 16px rgba(7,17,31,0.1)",
+        fontFamily: "Sora, Manrope, sans-serif",
+        backdropFilter: "blur(8px)",
       }}>
-        <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#ff4d4d" }}>{label}</p>
+        <p style={{
+          margin: "0 0 6px 0",
+          fontWeight: 700,
+          color: darkMode ? "#00D4FF" : "#0077CC",
+          textTransform: "uppercase",
+          letterSpacing: "0.4px",
+          fontSize: "11px"
+        }}>{label}</p>
         {payload.map((entry, i) => (
-          <p key={i} style={{ margin: "2px 0", color: entry.color }}>
+          <p key={i} style={{
+            margin: "3px 0",
+            color: entry.color,
+            fontVariantNumeric: "tabular-nums"
+          }}>
             {entry.name}: <strong>{entry.value}</strong>
           </p>
         ))}
@@ -343,8 +364,8 @@ function CricketChart({ chartConfig, darkMode }) {
   if (!chartConfig || !chartConfig.data || chartConfig.data.length === 0) return null;
 
   const { chart_type, x_key, y_keys, data } = chartConfig;
-  const axisColor = darkMode ? "#aaaaaa" : "#555555";
-  const gridColor = darkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
+  const axisColor = darkMode ? "#7F94AA" : "#63758A";
+  const gridColor = darkMode ? "rgba(0, 212, 255, 0.08)" : "rgba(7, 17, 31, 0.06)";
 
   if (chart_type === "bar") {
     return (
@@ -467,7 +488,7 @@ function CricketChart({ chartConfig, darkMode }) {
             <Pie data={data} dataKey={y_keys[0]} nameKey={x_key} cx="50%" cy="50%" outerRadius={120} innerRadius={50} paddingAngle={3} labelLine={false} label={renderLabel}>
               {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />)}
             </Pie>
-            <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ background: darkMode ? "#1f1f1f" : "#fff", border: "1px solid #8b0000", borderRadius: 10, color: darkMode ? "white" : "black" }} />
+            <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ background: darkMode ? "rgba(11, 27, 46, 0.95)" : "#ffffff", border: `1px solid ${darkMode ? "rgba(0, 212, 255, 0.35)" : "#D5E7F2"}`, borderRadius: 10, color: darkMode ? "#F8FBFF" : "#07111F", fontFamily: "Sora, Manrope, sans-serif" }} />
           </PieChart>
         </ResponsiveContainer>
         <div className="chart-legend" style={{ justifyContent: "center", marginTop: 8 }}>
